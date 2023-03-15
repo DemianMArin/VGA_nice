@@ -123,20 +123,29 @@ architecture RTL of Test_Pattern_Gen is
   signal row : integer := to_integer(unsigned(w_Row_Count));
   
   -- For drawing frame
-  signal drawBstar, drawBob, drawCirclesig : boolean;
+  signal drawBstar, drawCirclesig : boolean;
 
   -- For video game
   signal r : integer range 0 to 100 := 50;
 
-  signal wStar : integer range 0 to 100 := 100;
-  signal hStar : integer range 0 to 100 := 65;
-  signal posXStar : integer range 0 to g_ACTIVE_COLS - wStar := 200;
-  signal posYStar : integer range 0 to g_ACTIVE_ROWS - hStar := 390;
+  signal wStar : integer range 0 to 100 := 80;
+  signal hStar : integer range 0 to 100 := 55;
+  signal posXStar : integer range 0 to g_ACTIVE_COLS - wStar := 380;
+  signal posYStar : integer range 0 to g_ACTIVE_ROWS - hStar := 400;
 
-  signal wOb : integer range 0 to 600 := 150;
-  signal hOb : integer range 0 to 600 := 100;
-  signal posXOb : integer range 0 to g_ACTIVE_COLS - wOb := 0;
-  signal posYOb : integer range 0 to g_ACTIVE_ROWS - hOb :=  0;
+  type obstaclePosX is array (0 to 4) of integer range 0 to g_ACTIVE_COLS;
+  type obstaclePosY is array (0 to 4) of integer range 0 to g_ACTIVE_ROWS;
+  type obstacleW is array (0 to 4) of integer range 0 to g_ACTIVE_COLS/2;
+  type obstacleH is array (0 to 4) of integer range 0 to g_ACTIVE_ROWS/2;
+  type obstacleStep is array(0 to 4) of integer range 0 to 30;
+  type drawObstacle is array (0 to 4) of boolean;
+
+  signal ob_posX : obstaclePosX := (0 => 100, 1 => 200, 2 => 300, 3 => 400 , 4 => 500);
+  signal ob_posY : obstaclePosY := (0 => 0, 1 => 120, 2 => 220, 3 => 320 , 4 => 370);
+  signal ob_W : obstacleW := (others => 100);
+  signal ob_H : obstacleH := (others => 75);
+  signal ob_step : obstacleStep := (0 => 10, 1 => 5, 2 => 3, 3 => 15 , 4 => 10);
+  signal ob_draw : drawObstacle;
 
 
 begin
@@ -179,7 +188,36 @@ begin
   -----------------------------------------------------------------------------
   -- Pattern 1: Video Game
   -----------------------------------------------------------------------------
-  Pattern_Red(1) <= (others => '1') when (drawBstar xor drawBob = True) else
+
+  drawBstar <= col > posXStar and 
+  col < posXStar + wStar and
+  row > posYStar and
+  row < posYStar + hStar;
+
+  ob_draw(0) <= col > ob_PosX(0) and 
+  col < ob_posX(0) + ob_W(0) and
+  row > ob_posY(0) and
+  row < ob_posY(0) + ob_H(0);
+
+  ob_draw(1) <= col > ob_PosX(1) and 
+  col < ob_posX(1) + ob_W(1) and
+  row > ob_posY(1) and
+  row < ob_posY(1) + ob_H(1);
+
+  ob_draw(2) <= col > ob_PosX(2) and 
+  col < ob_posX(2) + ob_W(2) and
+  row > ob_posY(2) and
+  row < ob_posY(2) + ob_H(2);
+
+  ob_draw(3) <= col > ob_PosX(3) and 
+  col < ob_posX(3) + ob_W(3) and
+  row > ob_posY(3) and
+  row < ob_posY(3) + ob_H(3);
+
+  Pattern_Red(1) <= (others => '1') when (drawBstar xor ob_draw(0) = true) else
+                    (others => '1') when (drawBstar xor ob_draw(1) = true) else
+                    (others => '1') when (drawBstar xor ob_draw(2) = true) else
+                    (others => '1') when (drawBstar xor ob_draw(3) = true) else
                     (others => '0');
   Pattern_Grn(1) <= (others => '0');
   Pattern_Blu(1) <= (others => '1') when (drawBstar = True) else
@@ -197,15 +235,6 @@ begin
  -----------------------------------------------------------------------------
   -- Process to control FRAME
   -----------------------------------------------------------------------------
-  drawBstar <= col > posXStar and 
-  col < posXStar + wStar and
-  row > posYStar and
-  row < posYStar + hStar;
-
-  drawBob <= col > posXOb and 
-  col < posXOb + wOb and
-  row > posYOb and
-  row < posYOb + hOb;
 
 
   -- updates starship position
@@ -274,12 +303,14 @@ begin
 
   -- updates obscle movement 
   object_movement : process(col,row,i_clk) 
-    constant step : integer := 10;
     variable delayCounter : natural range 0 to 50e6:=0;
   begin
     if(rising_edge(i_clk)) then
       if delayCounter = 10e5 then
-        posXOb <= posXOb + step;
+        ob_posX(0) <= ob_posX(0) - ob_step(0);
+        ob_posX(1) <= ob_posX(1) + ob_step(1);
+        ob_posX(2) <= ob_posX(2) + ob_step(2);
+        ob_posX(3) <= ob_posX(3) - ob_step(3);
         delayCounter := 0;
       end if;
       delayCounter := delayCounter + 1;
