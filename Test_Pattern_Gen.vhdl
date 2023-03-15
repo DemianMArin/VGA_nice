@@ -16,6 +16,7 @@ entity Test_Pattern_Gen is
     i_Clk     : in std_logic;
     i_Pattern : in std_logic_vector(3 downto 0);
     i_Controllers : in std_logic_vector(3 downto 0);
+    i_sliders : in std_logic_vector(1 downto 0);
     i_key : in std_logic_vector(1 downto 0);
     i_HSync   : in std_logic;
     i_VSync   : in std_logic;
@@ -56,22 +57,26 @@ architecture RTL of Test_Pattern_Gen is
 
     variable drawBcircle : boolean := false;
   begin
-    v(0) := "000" & std_logic_vector(to_unsigned(r, v(0)'length))(9 downto 3);
-    v(1) := "000" & std_logic_vector(to_unsigned(r*3, v(1)'length))(9 downto 3);
-    v(2) := "000" & std_logic_vector(to_unsigned(r*5, v(2)'length))(9 downto 3);
+    -- 6, 4, 3
+    -- 7, 6, 5
+    v(0) := "000" & std_logic_vector(to_unsigned(r*3, v(0)'length))(9 downto 3);
+    v(1) := "000" & std_logic_vector(to_unsigned(r*6, v(1)'length))(9 downto 3);
+    v(2) := "000" & std_logic_vector(to_unsigned(r*7, v(2)'length))(9 downto 3);
   
     cosT(0) := posX + r; cosT(1) := posX + to_integer(unsigned(v(2))); cosT(2) := posX + to_integer(unsigned(v(1))); cosT(3) := posX + to_integer(unsigned(v(0))); cosT(4) := posX;
     cosT(5) := posX - to_integer(unsigned(v(0))); cosT(6) := posX - to_integer(unsigned(v(1))); cosT(7) := posX - to_integer(unsigned(v(2))); cosT(8) := posX - r; cosT(9) := posX - to_integer(unsigned(v(2)));
     cosT(10) := posX - to_integer(unsigned(v(1))); cosT(11) := posX - to_integer(unsigned(v(0))); cosT(12) := posX; cosT(13) := posX + to_integer(unsigned(v(0))); cosT(14) := posX + to_integer(unsigned(v(1)));
     cosT(15) := posX + to_integer(unsigned(v(2)));
  
-    sinT(12) := posY; sinT(13) := posY + to_integer(unsigned(v(0))); sinT(14) := posY + to_integer(unsigned(v(1))); sinT(15) := posY + to_integer(unsigned(v(2))); sinT(0) := posY + r;
-    sinT(1) := posY + to_integer(unsigned(v(2))); sinT(2) := posY + to_integer(unsigned(v(1))); sinT(3) := posY + to_integer(unsigned(v(0))); sinT(4) := posY; sinT(5) := posY - to_integer(unsigned(v(0)));
-    sinT(6) := posY - to_integer(unsigned(v(1))); sinT(7) := posY - to_integer(unsigned(v(2))); sinT(8) := posY - r; sinT(9) := posY - to_integer(unsigned(v(2))); sinT(10) := posY - to_integer(unsigned(v(1)));
-    sinT(11) := posY - to_integer(unsigned(v(0)));
+    sinT(4) := posY; sinT(3) := posY + to_integer(unsigned(v(0))); sinT(2) := posY + to_integer(unsigned(v(1))); sinT(1) := posY + to_integer(unsigned(v(2))); sinT(0) := posY + r;
+    sinT(15) := posY + to_integer(unsigned(v(2))); sinT(14) := posY + to_integer(unsigned(v(1))); sinT(13) := posY + to_integer(unsigned(v(0))); sinT(12) := posY; sinT(11) := posY - to_integer(unsigned(v(0)));
+    sinT(10) := posY - to_integer(unsigned(v(1))); sinT(9) := posY - to_integer(unsigned(v(2))); sinT(8) := posY - r; sinT(7) := posY - to_integer(unsigned(v(2))); sinT(6) := posY - to_integer(unsigned(v(1)));
+    sinT(5) := posY - to_integer(unsigned(v(0)));
 
     if (col>cosT(8) and col<cosT(7) and (row>sinT(5) and row<sinT(3))) then
       drawBcircle := true; 
+    -- if (row>sinT(5) and row<sinT(3)) then
+    --   drawBcircle := true;
     elsif ((col>cosT(7) and col<cosT(6) and row>sinT(6) and row<sinT(5)) = true) then
       drawBcircle := true;
     elsif ((col>cosT(6) and col<cosT(5) and row>sinT(7) and row<sinT(6)) = true) then
@@ -122,15 +127,16 @@ architecture RTL of Test_Pattern_Gen is
 
   -- For video game
   signal r : integer range 0 to 100 := 50;
-  signal wStar : integer range 0 to 100 := 20;
-  signal hStar : integer range 0 to 100 := 10;
-  signal posXStar : integer range 0 to g_ACTIVE_COLS - wStar := 200;
-  signal posYStar : integer range 0 to g_ACTIVE_ROWS - hStar :=  200;
 
-  signal wOb : integer range 0 to 100 := 75;
-  signal hOb : integer range 0 to 100 := 20;
-  signal posXOb : integer range 0 to g_ACTIVE_COLS - wOb := 300;
-  signal posYOb : integer range 0 to g_ACTIVE_ROWS - hOb :=  20;
+  signal wStar : integer range 0 to 100 := 100;
+  signal hStar : integer range 0 to 100 := 65;
+  signal posXStar : integer range 0 to g_ACTIVE_COLS - wStar := 200;
+  signal posYStar : integer range 0 to g_ACTIVE_ROWS - hStar := 390;
+
+  signal wOb : integer range 0 to 600 := 150;
+  signal hOb : integer range 0 to 600 := 100;
+  signal posXOb : integer range 0 to g_ACTIVE_COLS - wOb := 0;
+  signal posYOb : integer range 0 to g_ACTIVE_ROWS - hOb :=  0;
 
 
 begin
@@ -204,8 +210,12 @@ begin
 
   -- updates starship position
   starship_actions : process(i_Clk)
-      variable step : integer range 0 to 10 := 5;
-      variable c_bn : integer range 0 to 20 := 0;
+      constant step : integer := 20;
+      constant step_slide : integer := 5;
+
+      variable c_bn : integer range 0 to 10 := 0;
+      variable c_slide : natural range 0 to 50e6 := 0;
+
   begin
     if rising_edge(i_clk) then
       if i_key(1) = '1' then
@@ -232,11 +242,50 @@ begin
             c_bn := c_bn + 1;
             posYStar <= posYStar - step;
           end if;
+        when "1111" =>
+          if c_slide > 1e6 then
+            case i_sliders is
+              when "00" =>
+                posXStar <= posXStar - step_slide;
+                posYStar <= posYStar + step_slide;
+                c_slide := 0;
+              when "01" =>
+                posXStar <= posXStar + step_slide;
+                posYStar <= posYStar + step_slide;
+                c_slide := 0;
+              when "10" =>
+                posXStar <= posXStar - step_slide;
+                posYStar <= posYStar - step_slide;
+                c_slide := 0;
+              when "11" =>
+                posXStar <= posXStar + step_slide;
+                posYStar <= posYStar - step_slide;
+                c_slide := 0;
+              when others =>
+                null;
+            end case;
+          end if;
+            c_slide := c_slide + 1;
         when others =>
             null;
       end case;
     end if;
   end process starship_actions;
+
+  -- updates obscle movement 
+  object_movement : process(col,row,i_clk) 
+    constant step : integer := 10;
+    variable delayCounter : natural range 0 to 50e6:=0;
+  begin
+    if(rising_edge(i_clk)) then
+      if delayCounter = 10e5 then
+        posXOb <= posXOb + step;
+        delayCounter := 0;
+      end if;
+      delayCounter := delayCounter + 1;
+
+    end if;
+  end process;
 
   -----------------------------------------------------------------------------
   -- Select between different test patterns

@@ -10,7 +10,9 @@ entity VGA_Test_Patterns_Top is
     -- test pattern
     swdisplay : in std_logic_vector(3 downto 0);
     swcontrollers : in std_logic_vector(3 downto 0);
+    swsliders : in std_logic_vector(1 downto 0);
     key : in std_logic_vector(1 downto 0);
+    
      
     -- VGA
     o_VGA_HSync : out std_logic;
@@ -91,6 +93,7 @@ begin
       i_Clk       => i_Clk,
       i_Pattern   => r_TP_Index,
       i_Controllers => r_TP_controllers,
+      i_sliders => swsliders,
       i_key => key,
       i_HSync     => w_HSync_VGA,
       i_VSync     => w_VSync_VGA,
