@@ -48,6 +48,19 @@ architecture RTL of Test_Pattern_Gen is
       );
   end component Sync_To_Count;
 
+  component videoGame_stage2 is 
+    generic (
+      g_ACTIVE_COLS : integer;
+      g_ACTIVE_ROWS : integer
+    );
+    port(
+      i_col : in integer range 0 to g_ACTIVE_COLS;
+      i_row : in integer range 0 to g_ACTIVE_ROWS;
+      i_clk : in std_logic;
+      o_drawShip : out boolean
+    );
+  end component videoGame_stage2;
+
   function draw_Circle_func (signal col, row, posX, posY, r : integer) 
   return boolean is
     type array_I is array (natural range <>) of integer;
@@ -75,8 +88,6 @@ architecture RTL of Test_Pattern_Gen is
 
     if (col>cosT(8) and col<cosT(7) and (row>sinT(5) and row<sinT(3))) then
       drawBcircle := true; 
-    -- if (row>sinT(5) and row<sinT(3)) then
-    --   drawBcircle := true;
     elsif ((col>cosT(7) and col<cosT(6) and row>sinT(6) and row<sinT(5)) = true) then
       drawBcircle := true;
     elsif ((col>cosT(6) and col<cosT(5) and row>sinT(7) and row<sinT(6)) = true) then
@@ -123,13 +134,16 @@ architecture RTL of Test_Pattern_Gen is
   signal row : integer := to_integer(unsigned(w_Row_Count));
   
   -- For drawing frame
-  signal drawBstar, drawCirclesig : boolean;
+  signal drawBstar, drawCirclesig, drawBstar_2: boolean;
 
   -- For video game
   signal r : integer range 0 to 100 := 50;
 
-  signal wStar : integer range 0 to 100 := 80;
-  signal hStar : integer range 0 to 100 := 55;
+  type stage_type is (stage0, stage1);
+  signal stage : stage_type := stage1;
+
+  signal wStar : integer range 0 to 100 := 60;
+  signal hStar : integer range 0 to 100 := 45;
   signal posXStar : integer range 0 to g_ACTIVE_COLS - wStar := 380;
   signal posYStar : integer range 0 to g_ACTIVE_ROWS - hStar := 400;
 
@@ -165,6 +179,18 @@ begin
       o_Row_Count => w_Row_Count
       );
 
+    stage2_game_inst : videoGame_stage2
+      generic map(
+        g_ACTIVE_COLS => g_ACTIVE_COLS,
+        g_ACTIVE_ROWS => g_ACTIVE_ROWS
+      )
+     port map(
+         i_col => col,
+         i_row => row,
+         i_clk => i_clk,
+         o_drawShip => drawBstar_2
+     );
+
 
   -- Register syncs to align with output data.
   p_Reg_Syncs : process (i_Clk) is
@@ -175,6 +201,14 @@ begin
     end if;
   end process p_Reg_Syncs; 
 
+  stage_counter : process (i_clk) is
+  begin
+    if rising_edge(i_clk) then
+      if (posYStar <= 10 and stage = stage0) then
+        stage <= stage1;
+      end if;
+    end if;
+  end process;
 
   -----------------------------------------------------------------------------
   -- Pattern 0: Disables the Test Pattern Generator
@@ -186,8 +220,9 @@ begin
   Pattern_Blu(0) <= Pattern_Red(0);
   
   -----------------------------------------------------------------------------
-  -- Pattern 1: Video Game
+  -- Pattern 1: Video Game stage 0
   -----------------------------------------------------------------------------
+
 
   drawBstar <= col > posXStar and 
   col < posXStar + wStar and
@@ -222,21 +257,30 @@ begin
   Pattern_Grn(1) <= (others => '0');
   Pattern_Blu(1) <= (others => '1') when (drawBstar = True) else
                     (others => '0');
+
   -----------------------------------------------------------------------------
-  -- Pattern 2: Circle
+  -- Pattern 2: Video Game Stage 2
   -----------------------------------------------------------------------------
-  Pattern_Red(2) <= (others => '1') when ( draw_Circle_func(col, row, posXStar, posYStar, r) = True) else
+  Pattern_Red(2) <= (others => '1') when (drawBstar_2 = true) else
                     (others => '0');
-  Pattern_Grn(2) <= (others => '0');
-    Pattern_Blu(2) <= Pattern_Red(2);
+  Pattern_Grn(2) <= (others => '1')  when (drawBstar_2 = true) else
+                    (others => '0');
+  Pattern_Blu(2) <= (others => '1') when (drawBstar_2 = True) else
+                    (others => '0');
+      
+  -----------------------------------------------------------------------------
+  -- Pattern 3: Circle
+  -----------------------------------------------------------------------------
+  Pattern_Red(3) <= (others => '1') when ( draw_Circle_func(col, row, posXStar, posYStar, r) = True) else
+                    (others => '0');
+  Pattern_Grn(3) <= (others => '0');
+    Pattern_Blu(3) <= Pattern_Red(3);
 
 
 
  -----------------------------------------------------------------------------
-  -- Process to control FRAME
+  -- Process to control FRAME Video Game Stage 1
   -----------------------------------------------------------------------------
-
-
   -- updates starship position
   starship_actions : process(i_Clk)
       constant step : integer := 20;
@@ -330,13 +374,20 @@ begin
           o_Grn_Video <= Pattern_Grn(0);
           o_Blu_Video <= Pattern_Blu(0);
         when "0001" =>
-          o_Red_Video <= Pattern_Red(1);
-          o_Grn_Video <= Pattern_Grn(1);
-          o_Blu_Video <= Pattern_Blu(1);
-        when "0010" =>
-          o_Red_Video <= Pattern_Red(2);
-          o_Grn_Video <= Pattern_Grn(2);
-          o_Blu_Video <= Pattern_Blu(2);
+          case stage is 
+            when stage0 =>
+              o_Red_Video <= Pattern_Red(1);
+              o_Grn_Video <= Pattern_Grn(1);
+              o_Blu_Video <= Pattern_Blu(1);
+            when stage1 =>
+              o_Red_Video <= Pattern_Red(2);
+              o_Grn_Video <= Pattern_Grn(2);
+              o_Blu_Video <= Pattern_Blu(2);
+            end case;
+        when "0101" =>
+          o_Red_Video <= Pattern_Red(3);
+          o_Grn_Video <= Pattern_Grn(3);
+          o_Blu_Video <= Pattern_Blu(3);
         when others =>
           o_Red_Video <= Pattern_Red(0);
           o_Grn_Video <= Pattern_Grn(0);
