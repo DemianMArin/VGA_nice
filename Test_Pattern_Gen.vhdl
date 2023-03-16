@@ -61,59 +61,21 @@ architecture RTL of Test_Pattern_Gen is
     );
   end component videoGame_stage2;
 
-  function draw_Circle_func (signal col, row, posX, posY, r : integer) 
-  return boolean is
-    type array_I is array (natural range <>) of integer;
-    type array_LV is array (0 to 2) of std_logic_vector(9 downto 0);
-    variable sinT, cosT : array_I(15 downto 0);
-    variable v : array_LV;
-
-    variable drawBcircle : boolean := false;
-  begin
-    -- 6, 4, 3
-    -- 7, 6, 5
-    v(0) := "000" & std_logic_vector(to_unsigned(r*3, v(0)'length))(9 downto 3);
-    v(1) := "000" & std_logic_vector(to_unsigned(r*6, v(1)'length))(9 downto 3);
-    v(2) := "000" & std_logic_vector(to_unsigned(r*7, v(2)'length))(9 downto 3);
-  
-    cosT(0) := posX + r; cosT(1) := posX + to_integer(unsigned(v(2))); cosT(2) := posX + to_integer(unsigned(v(1))); cosT(3) := posX + to_integer(unsigned(v(0))); cosT(4) := posX;
-    cosT(5) := posX - to_integer(unsigned(v(0))); cosT(6) := posX - to_integer(unsigned(v(1))); cosT(7) := posX - to_integer(unsigned(v(2))); cosT(8) := posX - r; cosT(9) := posX - to_integer(unsigned(v(2)));
-    cosT(10) := posX - to_integer(unsigned(v(1))); cosT(11) := posX - to_integer(unsigned(v(0))); cosT(12) := posX; cosT(13) := posX + to_integer(unsigned(v(0))); cosT(14) := posX + to_integer(unsigned(v(1)));
-    cosT(15) := posX + to_integer(unsigned(v(2)));
- 
-    sinT(4) := posY; sinT(3) := posY + to_integer(unsigned(v(0))); sinT(2) := posY + to_integer(unsigned(v(1))); sinT(1) := posY + to_integer(unsigned(v(2))); sinT(0) := posY + r;
-    sinT(15) := posY + to_integer(unsigned(v(2))); sinT(14) := posY + to_integer(unsigned(v(1))); sinT(13) := posY + to_integer(unsigned(v(0))); sinT(12) := posY; sinT(11) := posY - to_integer(unsigned(v(0)));
-    sinT(10) := posY - to_integer(unsigned(v(1))); sinT(9) := posY - to_integer(unsigned(v(2))); sinT(8) := posY - r; sinT(7) := posY - to_integer(unsigned(v(2))); sinT(6) := posY - to_integer(unsigned(v(1)));
-    sinT(5) := posY - to_integer(unsigned(v(0)));
-
-    if (col>cosT(8) and col<cosT(7) and (row>sinT(5) and row<sinT(3))) then
-      drawBcircle := true; 
-    elsif ((col>cosT(7) and col<cosT(6) and row>sinT(6) and row<sinT(5)) = true) then
-      drawBcircle := true;
-    elsif ((col>cosT(6) and col<cosT(5) and row>sinT(7) and row<sinT(6)) = true) then
-      drawBcircle := true;                    
-    elsif ((col>cosT(5) and col<cosT(3) and row>sinT(8) and row<sinT(7)) = true) then
-      drawBcircle := true; 
-    elsif ((col>cosT(3) and col<cosT(2) and row>sinT(7) and row<sinT(6)) = true) then
-      drawBcircle := true; 
-    elsif ((col>cosT(2) and col<cosT(1) and row>sinT(6) and row<sinT(5)) = true) then
-      drawBcircle := true; 
-    elsif ((col>cosT(1) and col<cosT(0) and row>sinT(5) and row<sinT(3)) = true) then
-      drawBcircle := true; 
-    elsif ((col>cosT(2) and col<cosT(1) and row>sinT(3) and row<sinT(2)) = true) then
-      drawBcircle := true; 
-    elsif ((col>cosT(3) and col<cosT(2) and row>sinT(2) and row<sinT(1)) = true) then
-      drawBcircle := true; 
-    elsif ((col>cosT(5) and col<cosT(3) and row>sinT(1) and row<sinT(0)) = true) then
-      drawBcircle := true; 
-    elsif ((col>cosT(6) and col<cosT(5) and row>sinT(2) and row<sinT(1)) = true) then
-      drawBcircle := true; 
-    elsif ((col>cosT(7) and col<cosT(6) and row>sinT(3) and row<sinT(2)) = true) then
-      drawBcircle := true; 
-    end if;
-
-    return drawBcircle;
-  end function;
+  component draw_circle is
+    generic (
+     g_ACTIVE_COLS : integer := 640;
+     g_ACTIVE_ROWS : integer := 480
+    );
+    port(
+        i_col : in integer range 0 to g_ACTIVE_COLS;
+        i_row : in integer range 0 to g_ACTIVE_ROWS;
+        i_posX : in integer range 0 to g_ACTIVE_COLS;
+        i_posY : in integer range 0 to g_ACTIVE_COLS;
+        i_r : integer range 0 to g_ACTIVE_COLS;
+        i_clk : in std_logic;
+        o_drawCircle : out boolean
+    );
+  end component draw_circle;
 
   -- VGA signal
   signal w_VSync : std_logic;
@@ -134,13 +96,11 @@ architecture RTL of Test_Pattern_Gen is
   signal row : integer := to_integer(unsigned(w_Row_Count));
   
   -- For drawing frame
-  signal drawBstar, drawCirclesig, drawBstar_2: boolean;
+  signal drawBstar, drawBstar_2, drawBcircle: boolean;
 
   -- For video game
-  signal r : integer range 0 to 100 := 50;
-
   type stage_type is (stage0, stage1);
-  signal stage : stage_type := stage1;
+  signal stage : stage_type := stage0;
 
   signal wStar : integer range 0 to 100 := 60;
   signal hStar : integer range 0 to 100 := 45;
@@ -161,6 +121,8 @@ architecture RTL of Test_Pattern_Gen is
   signal ob_step : obstacleStep := (0 => 10, 1 => 5, 2 => 3, 3 => 15 , 4 => 10);
   signal ob_draw : drawObstacle;
 
+  -- For circle
+  signal r : integer range 0 to 100 := 10;
 
 begin
 
@@ -191,6 +153,21 @@ begin
          o_drawShip => drawBstar_2
      );
 
+     circle : draw_circle
+     generic map(
+       g_ACTIVE_COLS => g_ACTIVE_COLS,
+       g_ACTIVE_ROWS => g_ACTIVE_ROWS
+     )
+    port map(
+        i_col => col,
+        i_row => row,
+        i_clk => i_clk,
+        i_posX => posXStar,
+        i_posY => posYStar,
+        i_r => r,
+        o_drawCircle => drawBcircle
+    );
+
 
   -- Register syncs to align with output data.
   p_Reg_Syncs : process (i_Clk) is
@@ -201,11 +178,20 @@ begin
     end if;
   end process p_Reg_Syncs; 
 
+    -- For choosing stage in game (Pattern 1,2)
   stage_counter : process (i_clk) is
+    variable c_bn : integer range 0 to 5;
   begin
+    if(i_key(0) = '1') then
+      c_bn:=0;
+    end if;
     if rising_edge(i_clk) then
       if (posYStar <= 10 and stage = stage0) then
         stage <= stage1;
+      end if;
+      if (i_key(0) = '0') then
+        stage <= stage0;
+        c_bn := c_bn +1;
       end if;
     end if;
   end process;
@@ -271,7 +257,7 @@ begin
   -----------------------------------------------------------------------------
   -- Pattern 3: Circle
   -----------------------------------------------------------------------------
-  Pattern_Red(3) <= (others => '1') when ( draw_Circle_func(col, row, posXStar, posYStar, r) = True) else
+  Pattern_Red(3) <= (others => '1') when ( drawBcircle = True) else
                     (others => '0');
   Pattern_Grn(3) <= (others => '0');
     Pattern_Blu(3) <= Pattern_Red(3);
@@ -291,6 +277,13 @@ begin
 
   begin
     if rising_edge(i_clk) then
+      if(drawBstar and ob_draw(0)) or (drawBstar and ob_draw(1)) or
+        (drawBstar and ob_draw(2)) or (drawBstar and ob_draw(3)) 
+        then
+          posXStar <= 380;
+          posYStar <= 400;
+      end if;
+
       if i_key(1) = '1' then
         c_bn := 0;
       end if;
